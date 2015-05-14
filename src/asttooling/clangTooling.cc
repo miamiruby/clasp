@@ -48,6 +48,7 @@ THE SOFTWARE.
 #include <clang/Lex/Preprocessor.h>
 #include <clang/ASTMatchers/Dynamic/VariantValue.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
+#include <clang/Frontend/TextDiagnosticPrinter.h>
 
 #include <clasp/core/foundation.h>
 #include <clasp/core/object.h>
@@ -441,6 +442,57 @@ namespace asttooling {
 
 
 
+    class DeduplicatingRefactoringTool : public clang::tooling::RefactoringTool {
+    public:
+	DeduplicatingRefactoringTool(const clang::tooling::CompilationDatabase& compilations,
+				     llvm::ArrayRef<std::string> sourcePaths )
+	    : clang::tooling::RefactoringTool(compilations,sourcePaths) {};
+    public:
+	void deduplicate() {
+	    map<string,std::vector<clang::tooling::Replacement>> separatedByFile;
+	    // Separate all Replacements by source file
+	    for ( auto rep : this->getReplacements() ) {
+		string filePath = rep.getFilePath();
+		auto it = separatedByFile.find(filePath);
+		if ( it == separatedByFile.end() ) {
+		    std::vector<clang::tooling::Replacement> one;
+		    separatedByFile[filePath] = one;
+		}
+		std::vector<clang::tooling::Replacement>& reps = separatedByFile[filePath];
+		reps.push_back(rep);
+	    }
+	    // Deduplicate Replacements for each source file
+	    for ( auto it = separatedByFile.begin(); it!=separatedByFile.end(); ++it ) {
+		std::vector<clang::tooling::Replacement>& reps(it->second);
+		std::vector<clang::tooling::Range> conflicts;
+		clang::tooling::deduplicate(reps,conflicts);
+	    }
+	    // Rewrite the Replace vector
+	    this->getReplacements().clear();
+	    for ( auto it = separatedByFile.begin(); it!=separatedByFile.end(); ++it ) {
+		std::vector<clang::tooling::Replacement>& reps(it->second);
+		for ( auto ri : reps ) {
+		    this->getReplacements().insert(ri);
+		}
+	    }
+	};
+
+	void writeReplacements() {
+	    clang::LangOptions DefaultLangOptions;
+	    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts = new clang::DiagnosticOptions();
+	    clang::TextDiagnosticPrinter DiagnosticPrinter(llvm::errs(), &*DiagOpts);
+	    clang::DiagnosticsEngine Diagnostics(
+						 clang::IntrusiveRefCntPtr<clang::DiagnosticIDs>(new clang::DiagnosticIDs()),
+						 &*DiagOpts, &DiagnosticPrinter, false);
+	    clang::SourceManager Sources(Diagnostics, getFiles());
+	    clang::Rewriter Rewrite(Sources, DefaultLangOptions);
+	    if (!applyAllReplacements(Rewrite)) {
+		llvm::errs() << "Skipped some replacements.\n";
+	    }
+	};
+
+    };
+
     
     
 #define ARGS_af_Replacements_insert "(replacement)"
@@ -458,44 +510,6 @@ namespace asttooling {
 
     
     
-#define ARGS_af_deduplicate "(replacements)"
-#define DECL_af_deduplicate ""
-#define DOCS_af_deduplicate "deduplicate wraps and lispifys clang::tooling::deduplicate - it takes a Cons of replacements and returns (values replacements overlapping-ranges)"
-    core::T_mv af_deduplicate(core::List_sp replacements)
-    {_G();
-        core::List_sp creps = replacements;
-        vector<clang::tooling::Replacement> vreps;
-        for ( ; creps.notnilp(); creps = oCdr(creps) ) {
-            core::T_sp one = oCar(creps);
-            clang::tooling::Replacement oneRep = *(one.as<core::WrappedPointer_O>()->cast<clang::tooling::Replacement>());
-            vreps.push_back(oneRep);
-        }
-        vector<clang::tooling::Range> vranges;
-        clang::tooling::deduplicate(vreps,vranges);
-        core::Cons_sp firstRep = core::Cons_O::create();
-        core::Cons_sp curRep = firstRep;
-        for ( auto i : vreps ) {
-            clang::tooling::Replacement* rp = new clang::tooling::Replacement(i);
-            core::T_sp wrapRep
-                = clbind::Wrapper<clang::tooling::Replacement,std::unique_ptr<clang::tooling::Replacement> >::create(rp,reg::registered_class<clang::tooling::Replacement>::id);
-            core::Cons_sp oneRepCons = core::Cons_O::create(wrapRep);
-            curRep->setCdr(oneRepCons);
-            curRep = oneRepCons;
-        }
-        core::Cons_sp firstRang = core::Cons_O::create();
-        core::Cons_sp curRang = firstRang;
-        for ( auto j : vranges ) {
-            // Why does Range not have a Copy constructor?????
-            clang::tooling::Range* rp = new clang::tooling::Range(j);//i.getOffset(),i.getLength());
-            core::T_sp wrapRang
-                = clbind::Wrapper<clang::tooling::Range,std::unique_ptr<clang::tooling::Range> >::create(rp,reg::registered_class<clang::tooling::Range>::id);
-            core::Cons_sp oneRangCons = core::Cons_O::create(wrapRang);
-            curRang->setCdr(oneRangCons);
-            curRang = oneRangCons;
-        }
-        return Values(oCdr(firstRep),oCdr(firstRang));
-    }
-
 
 
 
@@ -609,6 +623,11 @@ namespace asttooling {
             .  def("getReplacements",&clang::tooling::RefactoringTool::getReplacements)
             .  def("applyAllReplacements",&clang::tooling::RefactoringTool::applyAllReplacements)
             .  def("runAndSave",&clang::tooling::RefactoringTool::runAndSave)
+            ,class_<DeduplicatingRefactoringTool,clang::tooling::RefactoringTool>("DeduplicatingRefactoringTool",no_default_constructor)
+            .  def_constructor("newDeduplicatingRefactoringTool",constructor<const clang::tooling::CompilationDatabase&,llvm::ArrayRef<std::string> >())
+            .  def("deduplicate",&DeduplicatingRefactoringTool::deduplicate)
+            .  def("writeReplacements",&DeduplicatingRefactoringTool::writeReplacements)
+
             ,class_<clang::Rewriter>("Rewriter",no_default_constructor)
             .  def_constructor("newRewriter",constructor<clang::SourceManager&,const clang::LangOptions&>())
             ,class_<clang::ASTUnit>("ASTUnit",no_default_constructor)
@@ -675,7 +694,6 @@ namespace asttooling {
             .  property("CompileCommandCommandLine",&clang::tooling::CompileCommand::CommandLine)
 //            ,def("buildASTFromCodeWithArgs",&clang::tooling::buildASTFromCodeWithArgs)
             ];
-        Defun(deduplicate);
         Defun(clangVersionString);
 
         Defun(testDerivable);
