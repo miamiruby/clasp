@@ -477,6 +477,8 @@ namespace asttooling {
 	    }
 	};
 
+	core::List_sp replacementsAsList();
+	
 	void writeReplacements() {
 	    clang::LangOptions DefaultLangOptions;
 	    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts = new clang::DiagnosticOptions();
@@ -626,6 +628,7 @@ namespace asttooling {
             ,class_<DeduplicatingRefactoringTool,clang::tooling::RefactoringTool>("DeduplicatingRefactoringTool",no_default_constructor)
             .  def_constructor("newDeduplicatingRefactoringTool",constructor<const clang::tooling::CompilationDatabase&,llvm::ArrayRef<std::string> >())
             .  def("deduplicate",&DeduplicatingRefactoringTool::deduplicate)
+	    .  def("replacementsAsList",&DeduplicatingRefactoringTool::replacementsAsList)
             .  def("writeReplacements",&DeduplicatingRefactoringTool::writeReplacements)
 
             ,class_<clang::Rewriter>("Rewriter",no_default_constructor)
@@ -709,4 +712,16 @@ namespace asttooling {
 
 
     }
+
+
+    core::List_sp DeduplicatingRefactoringTool::replacementsAsList() {
+	core::List_sp result(_Nil<core::T_O>());
+	for ( auto rep : this->getReplacements() ) {
+	    result = core::Cons_O::create(translate::to_object<clang::tooling::Replacement const&>::convert(rep),result);
+	}
+	return result;
+    }
+
+
+    
 };
