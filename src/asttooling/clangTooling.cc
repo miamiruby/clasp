@@ -465,7 +465,9 @@ namespace asttooling {
 	    for ( auto it = separatedByFile.begin(); it!=separatedByFile.end(); ++it ) {
 		std::vector<clang::tooling::Replacement>& reps(it->second);
 		std::vector<clang::tooling::Range> conflicts;
+		printf("%s:%d Deduplicating for file %s starting with %lu Replacements\n", __FILE__, __LINE__, it->first.c_str(), reps.size());
 		clang::tooling::deduplicate(reps,conflicts);
+		printf("        There were %lu conflicts and there are now %lu Replacements\n", conflicts.size(), reps.size() );
 	    }
 	    // Rewrite the Replace vector
 	    this->getReplacements().clear();
