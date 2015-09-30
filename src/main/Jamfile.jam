@@ -5,12 +5,12 @@ project internals/main : requirements
 	<define>EXPAT
 	<toolset>darwin:<define>READLINE
 	<include>./
-	<include>../core
 	<include>../cffi
 	<include>../llvmo
 	<include>../gctools
 	<include>../sockets
 	<include>../serveEvent
+	<include>../core
 	<toolset>darwin:<define>darwin
 	<toolset>darwin,<variant>debug:<cxxflags>"-g3"
 	<toolset>darwin:<cxxflags>"-Wno-unused-variable -fopenmp"
@@ -37,14 +37,14 @@ alias gclib : mymps.c :
 
 
 sources = 
-    	    	/internals/core//core        #//bundle/<link>static
+		/internals/gctools//gctools     #//bundle/<link>static
 		/internals/cffi//cffi        #//bundle/<link>static
 		/internals/llvmo//llvmo       #//bundle/<link>static
                 /internals/clbind//clbind      #//bundle/<link>static
-		/internals/gctools//gctools     #//bundle/<link>static
 		/internals/sockets//sockets     #//bundle/<link>static
 		/internals/serveEvent//serveEvent  #//bundle/<link>static
 		/internals/asttooling//asttooling  #//bundle/<link>static
+    	    	/internals/core//core        #//bundle/<link>static
 		/externals//llvm_lib/<link>static
 		/externals//clang_lib/<link>static
 		/externals//boostAndExpatLibs/<link>static

@@ -45,9 +45,6 @@ THE SOFTWARE.
   Switch to hash-tables to speed things up */
 #define USE_SHARP_EQUAL_HASH_TABLES 1
 
-#define ALWAYS_INLINE __attribute__((always_inline))
-#define NOINLINE __attribute__((noinline))
-
 namespace std {
 class type_info;
 };
@@ -77,8 +74,6 @@ class type_info;
 #include <clasp/core/gcInterface.h>
 //#include <cstdio>
 
-//! Macro for attribute that causes symbols to be exposed
-#define ATTR_WEAK __attribute__((weak))
 
 #if defined(DEBUG_TELEMETRY)
 #define DEBUG_MPS_ALLOCATION(poolName, addr, gcobject_addr, size, kind) clasp_mps_debug_allocation(poolName, addr, gcobject_addr, size, kind)
@@ -87,15 +82,8 @@ class type_info;
 //#define DEBUG_MPS_FIX1_BEFORE(base,smartaddr)
 #endif
 
-#define clasp_unlikely(x) __builtin_expect(!!(x), 0)
-#define clasp_likely(x) __builtin_expect(!!(x), 1)
-#define UNLIKELY(x) clasp_unlikely(x)
-#define LIKELY(x) clasp_likely(x)
-
-typedef std::size_t class_id;
-
 /*! Configure architecture dependent types */
-#include <clasp/core/config.h>
+#include <clasp/gctools/config.h>
 
 /*! Use old Conditions system baked into C++
   OLD_CONDITIONS = 1
@@ -416,14 +404,6 @@ using set = std::set<X>;
 template <typename X>
 using deque = std::deque<X>;
 
-#if defined(USE_REFCOUNT)
-namespace boost {
-template <class T>
-void intrusive_ptr_add_ref(T *p);
-template <class T>
-void intrusive_ptr_release(T *p);
-};
-#endif
 
 /* --------------------------------------------------
    --------------------------------------------------
@@ -483,107 +463,15 @@ namespace core {
 
 /*! Class registration code - each registered class gets a unique number associated with it */
 
-#include <boost/operators.hpp>
 
-namespace gctools {
-/*! Inheriting from this class indicates that the derived class
-      includes smart_ptr's but is only ever instantiated on the stack.
-      This means the conservative garbage collector will see the smart_ptr's
-      when it scans the stack.
-    */
-class StackBoundClass {};
 
-/*! Inheriting from this class indicates that the derived class
-      contains absolutely no smart_ptrs or weak_ptrs either directly
-      or indirectly - DON'T PUT ANY POINTERS IN THE DERIVED CLASS */
-class GCIgnoreClass {};
-};
-
-namespace reg {
-
-struct null_type : public gctools::GCIgnoreClass {};
-class_id const unknown_class = (std::numeric_limits<class_id>::max)();
-class type_id
-    : public boost::less_than_comparable<type_id>,
-      public gctools::GCIgnoreClass {
-public:
-  type_id()
-      : id(&typeid(null_type)) {}
-
-  type_id(std::type_info const &id)
-      : id(&id) {}
-
-  bool operator!=(type_id const &other) const {
-    return *id != *other.id;
-  }
-
-  bool operator==(type_id const &other) const {
-    return *id == *other.id;
-  }
-
-  bool operator<(type_id const &other) const {
-    return id->before(*other.id);
-  }
-
-  char const *name() const {
-    return id->name();
-  }
-
-  std::type_info const *get_type_info() const { return this->id; };
-
-private:
-  std::type_info const *id;
-};
-
-class_id allocate_class_id(type_id const &cls);
-template <class T>
-struct registered_class : gctools::GCIgnoreClass {
-  static class_id const id;
-};
-template <class T>
-class_id const registered_class<T>::id = allocate_class_id(typeid(T));
-template <class T>
-struct registered_class<T const>
-    : registered_class<T> {};
-};
-
-#define BF boost::format
 
 namespace core {
-extern int _global_signalTrap;
-extern bool _global_debuggerOnSIGABRT; // If this is false then SIGABRT is processed normally and it will lead to termination of the program. See core_exit!
-void lisp_pollSignals();
-};
-#define SET_SIGNAL(s) \
-  { core::_global_signalTrap = s; }
-#define POLL_SIGNALS() core::lisp_pollSignals();
-
-void lisp_errorDereferencedNonPointer(core::T_O *objP);
-void lisp_errorBadCast(class_id toType, class_id fromType, core::T_O *objP);
-void lisp_errorBadCastFromT_O(class_id toType, core::T_O *objP);
-void lisp_errorBadCastToFixnum(class_id fromType, core::T_O *objP);
-void lisp_errorBadCastFromT_OToCons_O(core::T_O *objP);
-void lisp_errorBadCastFromSymbol_O(class_id toType, core::Symbol_O *objP);
-void lisp_errorUnexpectedType(class_id expectedTyp, class_id givenTyp, core::T_O *objP);
-void lisp_errorUnexpectedNil(class_id expectedTyp);
-void lisp_errorDereferencedNil();
-void lisp_errorDereferencedUnbound();
-void lisp_errorIllegalDereference(void *v);
-
-template <typename To, typename From, typename ObjPtrType>
-void __attribute__((noreturn)) lisp_errorCast(ObjPtrType objP) {
-  class_id to_typ = reg::registered_class<To>::id;
-  class_id from_typ = reg::registered_class<From>::id;
-  lisp_errorBadCast(to_typ, from_typ, reinterpret_cast<core::T_O *>(objP));
-  __builtin_unreachable();
-}
-
-namespace core {
-struct ThreadInfo;
-class MultipleValues;
-void lisp_setThreadLocalInfoPtr(ThreadInfo *address);
-MultipleValues &lisp_multipleValues();
-MultipleValues &lisp_callArgs();
+    struct ThreadInfo;
+    class MultipleValues;
+    void lisp_setThreadLocalInfoPtr(ThreadInfo *address);
+    MultipleValues &lisp_multipleValues();
+    MultipleValues &lisp_callArgs();
 };
 
 extern void clasp_mps_debug_allocation(const char *poolName, void *base, void *objAddr, int size, int kind);
@@ -593,14 +481,6 @@ extern void clasp_mps_debug_fix_after(void *pbase, void *px);
 extern void clasp_mps_debug_container(const char *ctype, const char *name, int size);
 //extern void clasp_mps_debug_scan_object(gctools::GCObject*  obj);
 
-namespace gctools {
-  struct return_type {
-    core::T_O* ret0;
-    size_t nvals;
-  return_type() : ret0(NULL), nvals(0) {};
-  return_type(core::T_O* r0, size_t nv) : ret0(r0), nvals(nv) {};
-  };
-};
 
 namespace core {
 #define LCC_MACROS
@@ -621,8 +501,6 @@ typedef gctools::smart_ptr<SourcePosInfo_O> SourcePosInfo_sp;
 typedef gctools::smart_ptr<SourceFileInfo_O> SourceFileInfo_sp;
 };
 
-#include <clasp/gctools/containers.h>
-
 #include <clasp/core/multipleValues.h>
 
 namespace core {
@@ -630,7 +508,7 @@ namespace core {
   typedef gc::smart_ptr<Instance_O> Instance_sp;
   
 #define LCC_PROTOTYPES
-#include <clasp/core/lispCallingConvention.h>
+#include <clasp/gctools/lispCallingConvention.h>
 #undef LCC_PROTOTYPES
 };
 
@@ -698,7 +576,7 @@ typedef vector<double> VectorDoubles;
 //
 // prototypes for functions defined in foundation.cc
 
-class StringStack : public gctools::GCIgnoreClass {
+class StringStack  {
 private:
   vector<string> parts;
 
@@ -1380,11 +1258,6 @@ namespace boost_filesystem = boost::filesystem;
 namespace core {
 void initialize_foundation();
 }
-
-#define clasp_disable_interrupts()
-#define clasp_enable_interrupts()
-
-#define unlikely_if(x) if (UNLIKELY(x))
 
 #ifdef DMALLOC
 #include <dmalloc.h>

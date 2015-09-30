@@ -139,8 +139,7 @@ void VectorObjects_O::archiveBase(::core::ArchiveP node) {
   // Archive other instance variables here
 }
 
-T_sp VectorObjects_O::asetUnsafe(int idx, T_sp value) {
-  _G();
+T_sp VectorObjects_O::aset_unsafe(int idx, T_sp value) {
   this->_Values[idx] = value;
   return value;
 }

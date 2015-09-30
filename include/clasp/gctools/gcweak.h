@@ -70,15 +70,18 @@ THE SOFTWARE.
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <functional>
+
 #ifdef DEBUG_GCWEAK
 #define GCWEAK_LOG(x) printf("%s:%d %s\n", __FILE__, __LINE__, (x).str().c_str())
 #else
 #define GCWEAK_LOG(x)
 #endif
 
+
 namespace core {
-string lisp_rep(T_sp obj);
-};
+    class WeakKeyHashTable_O;
+}
 
 namespace gctools {
 

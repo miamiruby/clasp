@@ -120,7 +120,6 @@ local sources =
       exceptions.cc
       commonLispUserPackage.cc
 	    metaClass.cc
-	    multipleValues.cc
       testing.cc
       predicates.cc
       write_list.cc

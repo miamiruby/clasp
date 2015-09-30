@@ -41,6 +41,8 @@
 
 #include <iostream>
 #include <cstring>
+#include <clasp/gctools/hardErrors.h>
+
 //#include "tagged_ptr.h"
 //#define TAGGED_PTR_BASE tagged_ptr
 

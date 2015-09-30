@@ -33,6 +33,7 @@ local sources =
 	gctoolsPackage.cc
         globals.cc
         gcStack.cc
+	    multipleValues.cc
         telemetry.cc
         gcalloc.cc
         gcweak.cc

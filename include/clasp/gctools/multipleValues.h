@@ -80,8 +80,6 @@ public: // Functions here
 #pragma GCC visibility pop
 };
 
-#include <clasp/gctools/multiple_value_pointers.h>
-
 namespace core {
 
 typedef gctools::multiple_values<T_O> T_mv;

@@ -39,33 +39,32 @@
 #define _core_pointer_tagging_H
 
 #include <boost/utility/binary.hpp>
-
+#include <typeinfo>
 #include <iostream>
 #include <cstring>
 
 #include <clasp/gctools/globals.h>
 
-//#include "tagged_ptr.h"
-//#define TAGGED_PTR_BASE tagged_ptr
 
-//#define	IsUndefined(x) (x)
-//#define	NotUndefined(x) (!(x))
+using namespace std;
 
-//#define	_FWPLock(x)	(x)
-
-//#define	TAGGED_PTR core::T_O*
-
-
-extern void lisp_errorUnexpectedNil(type_info const &toType);
-extern void lisp_errorBadCast(type_info const &toType, type_info const &fromType, core::T_O *objP);
-extern void lisp_errorBadCastFromT_O(type_info const &toType, core::T_O *objP);
-extern void lisp_errorBadCastToFixnum_O(type_info const &fromType, core::T_O *objP);
-extern void lisp_errorBadCastFromT_OToCons_O(core::T_O *objP);
-extern void lisp_errorBadCastFromSymbol_O(type_info const &toType, core::Symbol_O *objP);
-extern void lisp_errorDereferencedNonPointer(core::T_O *objP);
+namespace core {
+    class T_O;
+    class Symbol_O;
+    class Cons_O;
+};
 
 namespace core {
   class VaList_S;
+};
+
+namespace gctools {
+  struct return_type {
+    core::T_O* ret0;
+    size_t nvals;
+  return_type() : ret0(NULL), nvals(0) {};
+  return_type(core::T_O* r0, size_t nv) : ret0(r0), nvals(nv) {};
+  };
 };
 
 namespace gctools {
@@ -306,7 +305,7 @@ ABI's  */
     } else if (gctools::tagged_consp<Type>(tagged_obj)) {
       return gctools::untag_cons<Type>(tagged_obj);
     } else {
-      THROW_HARD_ERROR(BF("Trying to untag non-other or non-cons: %p") % (void *)(tagged_obj));
+        THROW_HARD_ERROR(boost::format("Trying to untag non-other or non-cons: %p") % (void *)(tagged_obj));
     }
   };
 };

@@ -24,9 +24,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 /* -^- */
-#include <clasp/core/foundation.h>
+//#include <clasp/core/foundation.h>
+#include <clasp/gctools/memoryManagement.h>
 #include <clasp/gctools/gcweak.h>
+
+#if 0
 #include <clasp/core/object.h>
+#endif
 #ifdef USE_MPS
 #include <clasp/mps/code/mps.h>
 #endif

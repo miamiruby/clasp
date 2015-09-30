@@ -27,6 +27,106 @@ THE SOFTWARE.
 #ifndef _clasp_memoryManagement_H
 #define _clasp_memoryManagement_H
 
+
+
+
+
+
+#include <clasp/gctools/config.h>
+
+namespace core {
+    class T_O;
+    class Symbol_O;
+    class Cons_O;
+};
+
+
+namespace gctools {
+extern int _global_signalTrap;
+extern bool _global_debuggerOnSIGABRT; // If this is false then SIGABRT is processed normally and it will lead to termination of the program. See core_exit!
+void lisp_pollSignals();
+};
+#define SET_SIGNAL(s) { gctools::_global_signalTrap = s; }
+#define POLL_SIGNALS() gctools::lisp_pollSignals();
+
+#define ALWAYS_INLINE __attribute__((always_inline))
+#define NOINLINE __attribute__((noinline))
+
+//! Macro for attribute that causes symbols to be exposed
+#define ATTR_WEAK __attribute__((weak))
+
+
+
+#define BF boost::format
+
+
+#define clasp_disable_interrupts()
+#define clasp_enable_interrupts()
+
+#define clasp_unlikely(x) __builtin_expect(!!(x), 0)
+#define clasp_likely(x) __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) clasp_unlikely(x)
+#define LIKELY(x) clasp_likely(x)
+
+#define unlikely_if(x) if (UNLIKELY(x))
+
+
+
+typedef std::size_t class_id;
+
+#include <limits>
+#include <typeinfo>
+#include <boost/operators.hpp>
+
+namespace reg {
+
+    struct null_type {};
+    class_id const unknown_class = (std::numeric_limits<class_id>::max)();
+    class type_id
+        : public boost::less_than_comparable<type_id> {
+    public:
+        type_id()
+            : id(&typeid(null_type)) {}
+
+        type_id(std::type_info const &id)
+            : id(&id) {}
+
+        bool operator!=(type_id const &other) const {
+            return id != other.id;
+        }
+
+        bool operator==(type_id const &other) const {
+            return id == other.id;
+        }
+
+        bool operator<(type_id const &other) const {
+            return id->before(*other.id);
+        }
+
+        char const *name() const {
+            return id->name();
+        }
+
+        std::type_info const *get_type_info() const { return this->id; };
+
+    private:
+        std::type_info const *id;
+    };
+
+    class_id allocate_class_id(type_id const &cls);
+    template <class T>
+    struct registered_class {
+        static class_id const id;
+    };
+    template <class T>
+    class_id const registered_class<T>::id = allocate_class_id(typeid(T));
+    template <class T>
+    struct registered_class<T const>
+        : registered_class<T> {};
+};
+
+
+
 #include <clasp/gctools/hardErrors.h>
 
 #define INTRUSIVE_POINTER_REFERENCE_COUNT_ACCESSORS(x)
@@ -113,6 +213,8 @@ struct GCAllocationPoint;
   Specialized in clasp_gc.cc
 
 */
+
+
 
 #include <clasp/gctools/pointer_tagging.h>
 
@@ -206,6 +308,10 @@ namespace gctools {
   GCStack* threadLocalStack();
 };
 
+#define LCC_MACROS
+#include <clasp/gctools/lispCallingConvention.h>
+#undef LCC_MACROS
+
 #include <clasp/gctools/gcStack.h>
 #include <clasp/gctools/gcalloc.h>
 
@@ -233,6 +339,20 @@ int handleFatalCondition();
        The main function is wrapped within this function */
 int startupGarbageCollectorAndSystem(MainFunctionType startupFn, int argc, char *argv[], bool mpiEnabled, int mpiRank, int mpiSize);
 };
+
+#include <clasp/gctools/containers.h>
+
+#include <clasp/gctools/multiple_value_pointers.h>
+
+#include <clasp/gctools/multipleValues.h>
+
+
+namespace core {
+    typedef gctools::multiple_values<core::T_O> T_mv;
+};
+
+
+
 
 
 #endif // _clasp_memoryManagement_H
